@@ -1,15 +1,23 @@
-FROM golang:1.14
+FROM golang:1.14-alpine AS builder
 
 ENV CGO_ENABLED 0
 
-WORKDIR /src/app
+WORKDIR /app
+COPY . ./
 
-RUN addgroup --system projects && adduser --system projects --ingroup projects
+# Using go mod.
+# RUN go mod download
+# Build the binary
+RUN GOOS=linux GOARCH=amd64 go build -a -o ./bin/svc -ldflags="-s -w"
 
-RUN chown -R projects:projects /src/app
+FROM scratch
 
-USER projects
+# Copy our static executable
+COPY --from=builder /app/bin/svc /svc
 
-COPY . .
+# Port on which the service will be exposed.
+EXPOSE 8000
 
-RUN go install -v ./...
+# Run the svc binary.
+CMD ["./svc"]
+
